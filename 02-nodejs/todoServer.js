@@ -39,11 +39,83 @@
 
   Testing the server - run `npm run test-todoServer` command in terminal
  */
-const express = require('express');
-const bodyParser = require('body-parser');
+const express = require("express");
+const bodyParser = require("body-parser");
+const { v4: uuidv4 } = require("uuid");
 
 const app = express();
-
 app.use(bodyParser.json());
+
+let todos = [];
+
+app.get("/todos", (req, res) => {
+  return res.status(200).json(todos);
+});
+
+app.get("/todos/:id", (req, res) => {
+  const todo = todos.find((todo) => todo.id === req.params.id);
+  if (!todo) {
+    return res
+      .status(404)
+      .json({ message: `Todo with id ${req.params.id} does not exist` });
+  }
+
+  return res.status(200).json(todo);
+});
+
+app.post("/todos", (req, res) => {
+  const { title, description } = req.body;
+
+  if (!title || !description) {
+    return res
+      .status(400)
+      .json({ message: "Missing title or description fields" });
+  }
+
+  const todo = { title, description, completed: false, id: uuidv4() };
+  todos.push(todo);
+
+  return res.status(201).json({ id: todo.id });
+});
+
+app.put("/todos/:id", (req, res) => {
+  const id = req.params.id;
+
+  let todoExists = todos.find((todo) => todo.id === id);
+  if (!todoExists) {
+    return res
+      .status(404)
+      .json({ message: `Todo with id ${req.params.id} does not exist` });
+  }
+
+  let updatedTodo = { ...todoExists, ...req.body };
+
+  todos = todos.map((todo) => {
+    if (todo.id === id) {
+      return updatedTodo;
+    }
+    return todo;
+  });
+
+  return res.status(200).json({ message: "Todo has been updated" });
+});
+
+app.delete("/todos/:id", (req, res) => {
+  const id = req.params.id;
+  const todo = todos.find((todo) => todo.id === id);
+  if (!todo) {
+    return res
+      .status(404)
+      .json({ message: `Todo with id ${req.params.id} does not exist` });
+  }
+
+  todos = todos.filter((todo) => todo.id !== id);
+
+  return res.status(200).json({ message: "Todo has been deleted" });
+});
+
+app.all("*", (req, res) => {
+  return res.status(404).json({ message: "Not found" });
+});
 
 module.exports = app;

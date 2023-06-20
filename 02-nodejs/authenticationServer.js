@@ -29,9 +29,79 @@
   Testing the server - run `npm run test-authenticationServer` command in terminal
  */
 
-const express = require("express")
+const express = require("express");
+const { v4: uuidv4 } = require("uuid");
+
 const PORT = 3000;
+let USERS = [];
+
 const app = express();
+app.use(express.json());
 // write your logic here, DONT WRITE app.listen(3000) when you're running tests, the tests will automatically start the server
+
+const isAuthorized = (req, res, next) => {
+  const email = req.get("email");
+  const password = req.get("password");
+  const userExists = USERS.find((user) => user.email === email);
+
+  if (!userExists) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (userExists.password !== password) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  req.userId = userExists.id;
+  next();
+};
+
+app.post("/signup", (req, res) => {
+  const { email, password, firstName, lastName } = req.body;
+
+  if (!email || !password || !firstName || !lastName) {
+    return res.status(400).send("Invalid request body");
+  }
+
+  let user = {
+    email,
+    password,
+    firstName,
+    lastName,
+    id: uuidv4(),
+  };
+
+  USERS.push(user);
+
+  return res.status(201).send("Signup successful");
+});
+
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+
+  const userExists = USERS.find((user) => user.email === email);
+
+  if (!userExists) {
+    return res.status(404).send("User doesnot exist");
+  }
+
+  if (userExists.password !== password) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  return res.status(200).json({
+    email,
+    firstName: userExists.firstName,
+    lastName: userExists.lastName,
+  });
+});
+
+app.get("/data", isAuthorized, (req, res) => {
+  let userData = USERS.map((user) => {
+    return { firstName: user.firstName, lastName: user.lastName, id: user.id };
+  });
+
+  return res.json({ users: userData });
+});
 
 module.exports = app;
